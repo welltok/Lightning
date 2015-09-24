@@ -98,7 +98,7 @@ class NaturalLanguageClassifier(object):
 		else:
 			self.username_ = username
 			self.password_ = password
-			gateway_url = 'https://gateway.watsonplatform.net/natural-language-classifier-experimental/api/v1/classifiers'
+			gateway_url = 'https://gateway.watsonplatform.net/natural-language-classifier/api/v1/classifiers/'
 			resp = requests.get(gateway_url, headers={"Content-Type": "application/json"}, auth=(username, password))
 			if resp.ok:
 				classifier = [cls for cls in resp.json().get('classifiers') if cls.get('classifier_id') == classifier_id]
@@ -152,9 +152,9 @@ class NaturalLanguageClassifier(object):
 
 
 if __name__ == "__main__":
-	sample_url = 'https://gateway.watsonplatform.net/natural-language-classifier-experimental/api'
-	user = 'f57fac7d-a315-42af-8d8f-fc613a30c6ff'
-	pw = 'BBLuwSp5WdHO'
+	sample_url = 'https://gateway.watsonplatform.net/natural-language-classifier/api'
+	user = ''
+	pw = ''
 	nlc_instance = NaturalLanguageClassifierInstance(user, pw, sample_url)
 	print "Number of classifiers : %d" % len(nlc_instance.get_classifiers())
 	sys.exit(0)
