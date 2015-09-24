@@ -1,5 +1,7 @@
 Welcome to the Lightning project!!!
 
+Contributors : Max, Laksh, Vin
+
 This project tracks all works associated with Watson Natural Language Classifier (NLC). Here's a layout of the repository:
 
 root
