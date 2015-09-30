@@ -13,12 +13,14 @@ root
  - Java (All Java sources)
  - Web (All Web resources)
 
-Step 1 : Use Extract.py to convert ground truth snapshot into CSVs
+For Python Modules
 
-Step 2 : Use split.py to split train and test set
+Step 1 : Use python/Extract.py to convert ground truth snapshot into CSVs
 
-Step 3 : Use nlc.py to train NLC using the train set
+Step 2 : Use python/split.py to split train and test set
 
-Step 4 : Use test.py to test NLC using the test set
+Step 3 : Use python/nlc.py to train NLC using the train set
+
+Step 4 : Use python/test.py to test NLC using the test set
 
 Have fun!!! 
