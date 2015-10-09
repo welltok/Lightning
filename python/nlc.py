@@ -13,7 +13,10 @@ import requests
 
 class NaturalLanguageClassifierInstance(object):
     """
-        Class that wraps the functionality associated with a single NLC instance
+        Class that wraps the functionality associated with a single NLC instance. You can use this instead of command line POSTs to interact with the NLC
+	There are three things that this make it very easy to do
+		-Train a classifier
+		-View information about what classifiers you have (and their statuses)
     """
 
     def __init__(self, username, password, url):
@@ -38,7 +41,7 @@ class NaturalLanguageClassifierInstance(object):
 
     def train_classifier(self, classifier_name="CLASSIFIER", training_data=[], language='en', training_file=None):
 
-        files = {'training_data': ('Welltok-train-set.csv', open(training_file, 'rb'),'text/csv'), \
+        files = {'training_data': ('train-set.csv', open(training_file, 'rb'),'text/csv'), \
                  'training_metadata': (json.dumps({'language': 'en', 'name': classifier_name}))}
         resp = requests.post("%s/v1/classifiers" % self.url_,files=files, auth=(self.get_username(), self.get_password()))
         if resp.ok:
@@ -177,14 +180,15 @@ if __name__ == "__main__":
         print nlInstance.get_id() + ' ' + nlInstance.get_name() + ' ' + nlInstance.get_created_date() + ' ' + nlInstance.get_status()
 
     # 2. Train a classifier
-    # nlc_instance.train_classifier("{Classifier Name}",training_file='{CSV FILE NAME}')
+    #moidfy the args to accept a csv file
+    # nlc_instance.train_classifier("{Classifier Name}",training_file='{CSV FILE NAME FROM extract.py}')
 
 
     # 3. Get information on a specific classifier
-    classifierId = '950DCB-nlc-722'
-    print(' ')
-    print "Displaying classifier information for " + classifierId
-    nl_classifier = nlc_instance.get_classifier_by_id(classifierId)
-    print "Name : " + nl_classifier.get_name() + " Created on " + nl_classifier.get_created_date() + "Status: " + nlInstance.get_status()
+    #classifierId = '{CLASSIFER_ID_FROM_STEP_1}'
+    #print(' ')
+   #print "Displaying classifier information for " + classifierId
+   # nl_classifier = nlc_instance.get_classifier_by_id(classifierId)
+    #print "Name : " + nl_classifier.get_name() + " Created on " + nl_classifier.get_created_date() + "Status: " + nlInstance.get_status()
 
     sys.exit(0)

@@ -7,21 +7,23 @@ import argparse
 # Parameters :
 # gttsnapshotxml - GTT Snapshot XML
 # outputfile - output CSV
-# numquestion - No. of questions to limit (NLC has a limitation of 20 MB size on the jSON and 10K training instance)
-# classesreport - Reports the number of unique classes
+# numquestion - No. of questions to limit (NLC has a limitation of 20 MB size for the jSON and 10K training instance)
+# classesreportfile - Reports the number of unique classes. Each line is a class, with the primary question as a key
 
-def extract(gttsnapshotxml, outputfile, numquestions, classesreport):
+#TODO # o
+def extract(gttsnapshotxml, outputfile, numquestions, classesreportfile):
 
     print("No. of training instances requested : ", numquestions)
 
     root = ET.parse(gttsnapshotxml).getroot()
     csvFile = open(outputfile, 'w')
-    dictionaryFlie = open(classesreport, 'w')
+    dictionaryFlie = open(classesreportfile, 'w')
     questionFile = open("questionfile.csv",'w')
 
     csvWriter = csv.writer(csvFile, delimiter=',')
     questionFileWriter = csv.writer(questionFile,delimiter=',')
 
+    tCount = 0
     count = 0
     questionDictionary = dict()
     classesDict = dict()
@@ -29,26 +31,11 @@ def extract(gttsnapshotxml, outputfile, numquestions, classesreport):
 
     for question in root.iter('question'):
 
+	
         id = question.find('id').text if question.find('id') is not None else ""
         value = question.find('value').text if question.find('value') is not None else ""
 
-        # Special handle to look for context - Welltok Only
-        context = value.find(',')
-        planQuestion = value.find("If I am covered")
-
-        # Required for Plan
-        #if context <= 0 or planQuestion == -1:
-        #    continue
-        #if count == int(numquestions):
-            #break
-
-        # Remove the context from question (Applicable for Welltok only)
-        if context > 0 and planQuestion >= 0:
-            questionText = value[context + 1:value.__sizeof__()].rstrip("").lstrip("")
-        else:
-            questionText = value
-
-        questionText = questionText.lstrip().rstrip()
+        questionText = value.lstrip().rstrip()
 
         # Get primary question PAU
         predefinedAnswerUnit = question.find('predefinedAnswerUnit').text if question.find(
@@ -64,9 +51,8 @@ def extract(gttsnapshotxml, outputfile, numquestions, classesreport):
                 'predefinedAnswerUnit') is not None else ""
 
             mappedQuestionText = mappedQuestion.find("value").text
-            if (context > 0):
-                mappedQuestionText = mappedQuestionText[context + 1:mappedQuestionText.__sizeof__()].rstrip().lstrip()
 
+            #We only keep the question if we haven't seen it before. We don't want to create mulitple lines in the CSV for duplicates. This will just confuse the NLC
             if questionDictionary.get(mappedQuestionText) is None or questionDictionary.get(mappedQuestionText) == "":
                 csvWriter.writerow([mappedQuestionText.encode('utf-8'), parentQuestionPau.text])
                 questionDictionary.update({mappedQuestionText: parentQuestionPau.text})
@@ -74,6 +60,7 @@ def extract(gttsnapshotxml, outputfile, numquestions, classesreport):
                 classCount += 1
                 count += 1
                 continue
+
 
             if parentQuestionPau != "":
                 if questionDictionary.get(questionText) is None or questionDictionary.get(questionText) == "":
@@ -111,11 +98,11 @@ def extract(gttsnapshotxml, outputfile, numquestions, classesreport):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("gttsnapshotxml", help="Ground Truth Snapshot XML")
-    parser.add_argument("outputfile", help="Output CSV")
-    parser.add_argument("numquestions", help="No. of questions requested")
-    parser.add_argument("classesreport", help="Classes Report CSV")
+    parser.add_argument("gttsnapshotxml", help="Ground Truth Snapshot XML File")
+    parser.add_argument("outputfile", help="Output CSV File ")
+    parser.add_argument("numquestions", help="No. of questions requested, as integer",type=int)
+    parser.add_argument("classesreportfile", help="Classes Report CSV, ture or false")
     args = parser.parse_args()
-    extract(args.gttsnapshotxml, args.outputfile, args.numquestions, args.classesreport)
+    extract(args.gttsnapshotxml, args.outputfile, args.numquestions, args.classesreportfile)
 
 

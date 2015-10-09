@@ -1,23 +1,27 @@
 Welcome to the Lightning project!!!
 
-Contributors : Max, Laksh, Vin
 
-This project tracks all works associated with Watson Natural Language Classifier (NLC). Here's a layout of the repository:
 
-root
- - Python (All Python Modules and Projects)
- - Scripts (ANT, Maven or other scripts)
- - Resources (Resource files for training and testing purposes)
-    - Training
-    - Tests
- - Java (All Java sources)
- - Web (All Web resources)
+This project consists of a series or wrappers and tools that can make it easier to work with the Watson Natural Language Classifier (NLC). If you haven't used it before, read up on it at http://www.ibm.com/smarterplanet/us/en/ibmwatson/developercloud/nl-classifier.html.
+
+
+ Here's a layout of the repository:
+
+root/
+ python/ (All Python Modules and Projects)
+ scripts/ (ANT, Maven or other scripts)
+ resources/ (Resource files for training and testing purposes)
+    training/
+    tests/
 
 For Python Modules
 
-Step 1 : Use python/Extract.py to convert ground truth snapshot into CSVs
+For each script, you can run it without arguments to see example usage.
 
-Step 2 : Use python/split.py to split train and test set
+If you are using this to migrate from WEA to NLC, we reccommend the following workflow:
+Step 0: Export the Ground truth XML from WEA. 
+Step 1 : Use python/Extract.py to convert ground truth snapshot into CSVs. 
+Step 2 : Use python/split.py to split train and test set. You will use the train set to 
 
 Step 3 : Use python/nlc.py to train NLC using the train set
 

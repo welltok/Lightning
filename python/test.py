@@ -21,8 +21,6 @@ def test(inputfile, classifierid, username, password, dumpresultfile, env):
     top_5 = 0
 
     classifier_url = "https://gateway.watsonplatform.net/natural-language-classifier/api/v1/classifiers/" + classifierid + "/classify"
-    if env == 'dev':
-        classifier_url = "https://gateway-d.watsonplatform.net/natural-language-classifier-alpha/api/v1/classifiers/" + classifierid + "/classify"
 
     base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
     headers = {'Content-type': 'application/json', 'Accept': 'application/json',
@@ -82,8 +80,6 @@ if __name__ == "__main__":
     parser.add_argument("bm_password", help="The bluemix password")
     parser.add_argument("-d", "--dumpresultfile",
                         help="produces a json dump of the test results to the file specified, this 'dump' is used by other utilities")
-    parser.add_argument("-e", "--environment", help="environment to run against, default = production",
-                        choices=['prod', 'dev'], default='prod')
     args = parser.parse_args()
-    test(args.testfile, args.classifier_id, args.bm_username, args.bm_password, args.dumpresultfile, args.environment)
+    test(args.testfile, args.classifier_id, args.bm_username, args.bm_password, args.dumpresultfile)
 
