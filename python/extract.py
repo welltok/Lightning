@@ -1,7 +1,7 @@
 import csv
 import xml.etree.ElementTree as ET
 import argparse
-
+from collections import defaultdict
 # Extracts questions, PAUs from Ground Truth Snapshot XML and creates a CSV file for NLC training purposes
 # Pre-Requisite : The XML must be exported from WEA ExperienceManager using the GroundTruthSnapshot export option
 # Parameters :
@@ -67,6 +67,7 @@ def extract(gttsnapshotxml, outputfile, numquestions, classesreportfile):
                     csvWriter.writerow([questionText.encode('utf-8'), parentQuestionPau.text])
                     questionDictionary.update({questionText: parentQuestionPau.text})
                     classesDict.update({parentQuestionPau.text: questionText.encode('utf-8')})
+
                     classCount += 1
                     count += 1
                 else:
@@ -84,6 +85,23 @@ def extract(gttsnapshotxml, outputfile, numquestions, classesreportfile):
             classCount += 1
     print("No. of classes found : " + str(len(classesDict)))
     print("Total Questions Generated : " + str(count))
+
+    #compute question statistics 
+    #invert question map to find # of questions per class 
+    inv_map = {}
+    for k, v in questionDictionary.iteritems():
+        inv_map[v] = inv_map.get(v, [])
+        inv_map[v].append(k)    
+    #turn the inverted map into a map where the key is list of classes and the value is the # of entries for that class 
+    count_map = defaultdict(list)
+    for k,v in inv_map.iteritems():
+        count_map[len(v)].append(k)
+
+    #print statistics about the training file 
+    print "\nThe NLC recommends having 8  items per class AT MINIMUM. Using the information below see if a substantial portion of your data does not meet this criteria. If not, consider adding more data to each class!!"
+    for k,v in count_map.iteritems():
+        print len(v), "classes with", k, "items"
+
     for item in classesDict.items():
         dictionaryFlie.write(str(item))
         dictionaryFlie.write('\n')
