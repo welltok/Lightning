@@ -15,13 +15,17 @@ import sys
 # outputestfile - the outputfile as CSV in the format, to be used for training 
 # percent_train, the percent of questions to reserve for training
 
-#TODO make split.csv check for class imbalances
+#TODO make split.csv optimized to prevent class imbalances
 def main(argv):
     if len(argv) != 4:
         print 'split.py inputfile percent_train outputtrainfile outputtestfile'
     else:
+            train_classes = set()
+            test_classes = set()
+            all_classes = set()
+            num_instances = 0
 	    csvFile = open(argv[0],'rb')
-	    print(csvFile.name)
+
 	    trainCsv = open(argv[2],'w')
 	    testCsv = open(argv[3],'w')
 	    csvTrainWriter = csv.writer(trainCsv, delimiter=',')
@@ -33,11 +37,31 @@ def main(argv):
 	    percent_as_decimal = float(argv[1])/100
 
 	    for row in total_data:
+                num_instances +=1
 		if random() < percent_as_decimal:
+                    train_classes.add(row[1])
 		    csvTrainWriter.writerow([row[0], row[1]])
 		else:
+                    test_classes.add(row[1])
 		    csvTestWriter.writerow([row[0], row[1]])
-
+                all_classes.add(row[1])
+            print "\n#########" + "DATA STATISTICS" + "#########"
+            print num_instances, " training instances"
+	    print len(all_classes), " classes"
+            print len(train_classes), " classes in the training set"
+            print len(test_classes), " classes in the training set"
+            train_count = 0
+            for item in train_classes:
+                if not item in test_classes:
+			train_count += 1
+            print train_count, "classes ONLY in the training set"
+            test_count = 0
+            for item in test_classes:
+                if not item in train_classes:
+			test_count += 1
+            print test_count, "classes ONLY in the testing set"
+            print "\n**If you have lots of classes only in the training or only in the testing set, you are going to get bad results. If you test on something you've never seen before, you have no chance of getting it right. To fix this, make sure each class has at least 2 instances (preferrably 8)**"
+            print "#########" + "##############" + "#########\n"	
 	    trainCsv.close()
 	    testCsv.close()
 	    csvFile.close()
