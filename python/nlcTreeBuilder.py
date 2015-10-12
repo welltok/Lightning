@@ -32,19 +32,21 @@ import sys
 import os
 import shutil
 import filecmp
-import requests
 import getopt
+import nlc
+import requests
 
 #set credentials
 username = ""
 password = ""
 defaultTreeName = "default"
 inputcsv = ""
+url = "https://gateway.watsonplatform.net/natural-language-classifier/api"
+
 
 options, args = getopt.getopt(sys.argv[1:], 'i:u:p:')
 
 for opts in options:
-    print(opts)
     if '-i' in opts[0]:
         inputcsv = opts[1]
     if '-u' in opts[0]:
@@ -56,55 +58,56 @@ if  not inputcsv or not username or not password:
     print("usage: nlcTreeBuilder.py -i csvInputFile -u username -p password")
     exit(2)
 
-def makeRequest(f):
-    url = "https://gateway.watsonplatform.net/natural-language-classifier/api/v1/classifiers"
-    training_meta = {'training_metadata':"{\"language\":\"en\",\"name\":\""+f.split('.csv')[0]+"\"}"}
-    files = {'training_data':open('constructedFiles/'+f, 'rb')}
-    headers = {'content-length':len(files)}
+if __name__ == "__main__":
+    if not os.path.exists("constructedFiles/tmp"):
+        os.makedirs("constructedFiles/tmp")
 
-    r = requests.post(url, data=training_meta, files=files, auth=(username, password))
+    with open(inputcsv) as csvfile:
+        fileList = [];
+        treeFile = csv.reader(csvfile, delimiter=',', quotechar='"')
+        newcsvFiles = [];
+        outputFileList = [];
 
-    print(r.text)
-    return
-
-if not os.path.exists("constructedFiles/tmp"):
-    os.makedirs("constructedFiles/tmp")
-
-with open(inputcsv) as csvfile:
-    fileList = [];
-    treeFile = csv.reader(csvfile, delimiter=',', quotechar='"')
-    newcsvFiles = [];
-    outputFileList = [];
-
-    #Read each row in input csv and break into csvs for each tree
-    for row in treeFile:
-        if len(row) > 2:
-            if row[2] == "":
-                row[2] = defaultTreeName
-            if row[2] in fileList:
-                newcsvFiles[fileList.index(row[2])].writerow([row[0], row[1]])
+        #Read each row in input csv and break into csvs for each tree
+        for row in treeFile:
+            if len(row) > 2:
+                if row[2] == "":
+                    row[2] = defaultTreeName
+                if row[2] in fileList:
+                    newcsvFiles[fileList.index(row[2])].writerow([row[0], row[1]])
+                else:
+                    fileList.append(row[2])
+                    outputFileList.append(open("constructedFiles/tmp/"+row[2]+".csv", 'w', newline=''))
+                    print("Found new tree " + row[2])
+                    newcsvFiles.append(csv.writer(outputFileList[-1], delimiter=',', quotechar='"'))
             else:
-                fileList.append(row[2])
-                outputFileList.append(open("constructedFiles/tmp/"+row[2]+".csv", 'w', newline=''))
-                print("Found new tree " + row[2])
-                newcsvFiles.append(csv.writer(outputFileList[-1], delimiter=',', quotechar='"'))
+                print("Only 2 columns in this csv. No need to for multi-tree support. Exiting")
+                exit(1)
 
-    #Close all files
-    for f in outputFileList:
-        f.close()
+        #Close all files
+        for f in outputFileList:
+            f.close()
 
-#Compare newly created to csvs to any preexisting ones.
-#If there are changes overwrite old csv and post to train new nlc
-for file in os.listdir("constructedFiles/tmp/"):
-    #If file doesn't exist copy and post
-    if not os.path.exists("constructedFiles/"+file):
-        shutil.copy("constructedFiles/tmp/"+file, "constructedFiles/")
-        print("Training classifier for " + file)
-        makeRequest(file)
-    else:
-        if filecmp.cmp("constructedFiles/tmp/"+file, "constructedFiles/"+file, shallow=False):
-            print(file + " hasn't changed. Skipping classifier training")
-        else:
-            print("Training classifier for " + file)
+    #Compare newly created to csvs to any preexisting ones.
+    #If there are changes overwrite old csv and post to train new nlc
+    nlcInstance = nlc.NaturalLanguageClassifierInstance(username, password, url)
+    for file in os.listdir("constructedFiles/tmp/"):
+        #If file doesn't exist copy and post
+        if not os.path.exists("constructedFiles/"+file):
             shutil.copy("constructedFiles/tmp/"+file, "constructedFiles/")
-            makeRequest(file)
+            print("Training classifier for " + file)
+            try:
+                nlcInstance.train_classifier(file, training_file="constructedFiles/tmp/"+file)
+            except requests.HTTPError as e:
+                    print(e)
+        else:
+            if filecmp.cmp("constructedFiles/tmp/"+file, "constructedFiles/"+file, shallow=False):
+                print(file + " hasn't changed. Skipping classifier training")
+            else:
+                print("Training classifier for " + file)
+                shutil.copy("constructedFiles/tmp/"+file, "constructedFiles/")
+                try:
+                    nlcInstance.train_classifier(file, training_file="constructedFiles/tmp/"+file)
+                except requests.HTTPError as e:
+                    print(e)
+
