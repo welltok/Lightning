@@ -172,7 +172,7 @@ if __name__ == "__main__":
     parser.add_argument("user", help="User Name")
     parser.add_argument("pw", help="Password")
     parser.add_argument("csvfile", help="CSV file that will be used to generate the classifier (probably the training file generated from split.py)")
-    parser.add_argument("classifiername", help="Name of the classifier	")
+    parser.add_argument("classifiername", help="Name of the classifier")
     args = parser.parse_args()
 
     # 1. Get classifiers information for a given user
