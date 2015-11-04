@@ -23,7 +23,7 @@ Step 0: Export the Ground truth XML from WEA.
 Step 1 : Use python/Extract.py to convert ground truth snapshot into CSVs. 
 Step 2 : Use python/split.py to split train and test set. You will use the train set to 
 
-Step 3 : Use python/nlc.py to train NLC using the train set
+Step 3 : Use python/train.py to train NLC using the train set
 
 Step 4 : Use python/test.py to test NLC using the test set
 
