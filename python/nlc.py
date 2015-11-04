@@ -161,30 +161,7 @@ class NaturalLanguageClassifier(object):
             else:
                 raise resp.raise_for_status()
 
-
-if __name__ == "__main__":
-    sample_url = 'https://gateway.watsonplatform.net/natural-language-classifier/api'
-    user = ''
-    pw = ''
-
-    # Pass this as arguments (Example : Python nlc.py <usernamer> <password>)
-    parser = argparse.ArgumentParser()
-    parser.add_argument("user", help="User Name")
-    parser.add_argument("pw", help="Password")
-    parser.add_argument("csvfile", help="CSV file that will be used to generate the classifier (probably the training file generated from split.py)")
-    parser.add_argument("classifiername", help="Name of the classifier")
-    args = parser.parse_args()
-
-    # 1. Get classifiers information for a given user
-    nlc_instance = NaturalLanguageClassifierInstance(args.user, args.pw, sample_url)
-    print "Listing all classifiers : Total No. : %d" % len(nlc_instance.get_classifiers())
-    for nlInstance in nlc_instance.get_classifiers():
-        print nlInstance.get_id() + ' ' + nlInstance.get_name() + ' ' + nlInstance.get_created_date() + ' ' + nlInstance.get_status()
-
-    # 2. Train a classifier
-    #moidfy the args to accept a csv file
-    #nlc_instance.train_classifier(args.classifiername,training_file=args.csvfile)
-
+#SAMPLE USAGE
 
     # 3. Get information on a specific classifier
     #classifierId = '{CLASSIFER_ID_FROM_STEP_1}'
