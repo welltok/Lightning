@@ -170,4 +170,3 @@ class NaturalLanguageClassifier(object):
    # nl_classifier = nlc_instance.get_classifier_by_id(classifierId)
     #print "Name : " + nl_classifier.get_name() + " Created on " + nl_classifier.get_created_date() + "Status: " + nlInstance.get_status()
 
-    sys.exit(0)
