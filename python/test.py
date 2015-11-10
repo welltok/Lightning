@@ -1,13 +1,14 @@
 # this script takes a json file in classifier format and uses it to test how well a classifier performs against it
 # it produces an output indicating accuracy and recall@5
-#command : python test.py testfile classifier id bm_username bm_password
-#example : python test.py test.json FD87F2-nlc-82 dge726egfg83728 gh26w7gd
 
 import urllib2
 import csv
 import base64
 import json
 import io
+from collections import defaultdict
+import operator
+from termcolor import colored
 
 import argparse
 
@@ -19,21 +20,27 @@ def test(inputfile, classifierid, username, password, dumpresultfile):
 	total = 0
 	correct = 0
 	top_5 = 0
+	avg_conf = defaultdict(list)
 
 	classifier_url = "https://gateway.watsonplatform.net/natural-language-classifier/api/v1/classifiers/" + classifierid + "/classify"
-
+	#print classifier_url
 	base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
 	headers = {'Content-type': 'application/json', 'Accept': 'application/json',
 	       'Authorization': 'Basic %s' % base64string}
-	print classifier_url
+	#print classifier_url
 
 	for entry in test_data:
+		
 		data = json.dumps({'text': entry[0]})
 		request = urllib2.Request(classifier_url, data=data, headers=headers)
 		response = urllib2.urlopen(request)
 		total += 1
 		json_response = json.loads(response.read())
+		
+		tc_name = json_response["classes"][0]["class_name"]
+		tc_conf = json_response["classes"][0]["confidence"]
 
+		avg_conf[tc_name].append(tc_conf)
 		json_response["actual_classes"] = entry[1]
 
 		topClassMatch = False
@@ -55,14 +62,33 @@ def test(inputfile, classifierid, username, password, dumpresultfile):
 
 	#print 'currently got ' + str(correct) + ' correct, ' + str(top_5) + ' in top5, ',
 	#print 'out of ' + str(total) + '. -- ' + str(correct * 100 / total) + '%'
+	#	avg_conf_scores = {reduce(lambda x, y: x + y, l) / len(l) for k,l in avg_conf.iteritems()}
+	print colored("******Overall Classifier Statistics*********", 'blue')
+	percent_correct = correct * 100 / total
+	if percent_correct > 90:
+		print "correct: " + str(correct) + " (percentage: " + colored(str(percent_correct) + "%)", 'green')
+	else:
+		print "correct: " + str(correct) + " (percentage: " + colored(str(percent_correct) + "%)", 'red')
 
-	print "******final results*********"
-	print "correct: " + str(correct) + " (percentage: " + str(correct * 100 / total) + "%)"
-	print "num of times in top 5: " + str(top_5) + " (percentage: " + str(top_5 * 100 / total) + "%)"
-	print "total: " + str(total)
+	percent_correct = top_5 * 100 / total
+	if percent_correct > 90:
+		print "num of times in top 5: " + str(top_5) + " (percentage: " + colored(str(percent_correct) + "%)", 'green')
+	else:
+		print "num of times in top 5: " + str(top_5) + " (percentage: " + colored(str(percent_correct) + "%)", 'red')
+
+	print "total: " + colored(str(total), 'green')
+	print colored("******Breakdown by class*********", 'blue')
+	avg_conf_scores = dict()
+	for k,l in avg_conf.iteritems():
+		avg_conf_scores[k] = reduce(lambda x, y: x + y, l) / len(l)
+
+	for k,v in sorted(avg_conf_scores.items(), key=operator.itemgetter(1)):
+		if v < .9:
+			print "Average confidence for " + str(k) +" is ",  colored(str(v), 'red')
+		else:
+			print "Average confidence for " + str(k) +" is ",  colored(str(v), 'green')
 
 	if dumpresultfile != None:
-            print dumpresultfile
 	    with io.open(dumpresultfile, 'w', encoding='utf-8') as f:
 		f.write(unicode(
 		    json.dumps(response_with_truth, ensure_ascii=False, sort_keys=True, indent=4, separators=(',', ': '))))
@@ -80,5 +106,6 @@ if __name__ == "__main__":
 	parser.add_argument("bm_password", help="The bluemix password")
 	parser.add_argument("resultsfile", help="produces a json dump of the test results to the file specified, this 'dump' is used by other utilities")
 	args = parser.parse_args()
+
 	test(args.testfile, args.classifier_id, args.bm_username, args.bm_password, args.resultsfile)
 
