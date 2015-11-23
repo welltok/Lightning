@@ -6,62 +6,96 @@ import csv
 import base64
 import json
 import io
-from collections import defaultdict
+from collections import *
 import operator
 from termcolor import colored
-
+from itertools import *
 import argparse
 
+def avg_lol(list_of_lists):
+		avg_scores = dict()
+		for class_name,classifications in list_of_lists.iteritems():
+			total_guesses = len(classifications)
+			correct_guesses = 0
+			for classification in classifications:
+				if classification[0] == class_name:
+					correct_guesses += 1
+			avg_scores[class_name] = float(correct_guesses) / float(total_guesses) 	
+		return avg_scores
 
-def test(inputfile, classifierid, username, password, dumpresultfile):
+
+def count_lol(list_of_lists):
+	counts = dict()
+	for item in { item for sublist in list_of_lists for item in sublist }:
+		counts[item] = sum(x.count(item) for x in list_of_lists)
+
+	sorted_x = sorted(counts.items(), key=operator.itemgetter(1), reverse=True)
+	return sorted_x
+
+
+
+
+def test(inputfile, classifierid, username, password):
 	response_with_truth = []
 	f = open(inputfile, 'r+')
 	test_data = csv.reader(f, delimiter=',')
 	total = 0
 	correct = 0
 	top_5 = 0
-	avg_conf = defaultdict(list)
+	correct_confs = defaultdict(list)
+	incorrect_confs = defaultdict(list)
+
+	top5_classes = defaultdict(list)
 
 	classifier_url = "https://gateway.watsonplatform.net/natural-language-classifier/api/v1/classifiers/" + classifierid + "/classify"
-	#print classifier_url
 	base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
 	headers = {'Content-type': 'application/json', 'Accept': 'application/json',
 	       'Authorization': 'Basic %s' % base64string}
-	#print classifier_url
+
 
 	for entry in test_data:
+		total+=1
+		question = entry[0]
+		correct_class = entry[1]
+		data = json.dumps({'text': question})
 		
-		data = json.dumps({'text': entry[0]})
+		#submit to NLC and get response back
 		request = urllib2.Request(classifier_url, data=data, headers=headers)
 		response = urllib2.urlopen(request)
-		total += 1
+	 
 		json_response = json.loads(response.read())
+
 		
 		tc_name = json_response["classes"][0]["class_name"]
 		tc_conf = json_response["classes"][0]["confidence"]
+		if tc_name == correct_class:
+			correct +=1
+			correct_confs[correct_class] += [tc_conf]
+		else:		
+			incorrect_confs[correct_class] += [tc_conf]
 
-		avg_conf[tc_name].append(tc_conf)
-		json_response["actual_classes"] = entry[1]
+		#avg_conf[tc_name].append(tc_conf)
 
-		topClassMatch = False
-		top5Match = False
 
-		if json_response['top_class'].encode('utf-8') == entry[1]:
-		    correct = correct + 1
-		    topClassMatch = True
+
+
+		top5_class = []
+		top5_conf = []
 		for top_classes in json_response['classes'][0:5]:
-		    if top_classes['class_name'] in entry[1]:
-			top_5 = top_5 + 1
-			top5Match = True
-			break
+			if top_classes['class_name'] == correct_class:
+				top_5 +=1
+		for top_classes in json_response['classes'][0:1]:
+	
+			top5_class.append(top_classes['class_name'])
 
-		json_response['top_class_match'] = topClassMatch
-		json_response['top5_classes_match'] = top5Match
+		top5_classes[correct_class].append(top5_class)
+		    #if top_classes['class_name'] in entry[1]:
+			#top_5 = top_5 + 1
+			#top5Match = True
+			#break
 
-		response_with_truth.append(json_response)
 
-	#print 'currently got ' + str(correct) + ' correct, ' + str(top_5) + ' in top5, ',
-	#print 'out of ' + str(total) + '. -- ' + str(correct * 100 / total) + '%'
+
 	#	avg_conf_scores = {reduce(lambda x, y: x + y, l) / len(l) for k,l in avg_conf.iteritems()}
 	print colored("******Overall Classifier Statistics*********", 'blue')
 	percent_correct = correct * 100 / total
@@ -78,34 +112,64 @@ def test(inputfile, classifierid, username, password, dumpresultfile):
 
 	print "total: " + colored(str(total), 'green')
 	print colored("******Breakdown by class*********", 'blue')
-	avg_conf_scores = dict()
-	for k,l in avg_conf.iteritems():
-		avg_conf_scores[k] = reduce(lambda x, y: x + y, l) / len(l)
 
-	for k,v in sorted(avg_conf_scores.items(), key=operator.itemgetter(1)):
-		if v < .9:
-			print "Average confidence for " + str(k) +" is ",  colored(str(v), 'red')
+
+	#average confidence scores
+	avg_corr_conf_scores = dict()
+	for k,l in correct_confs.iteritems():
+		avg_corr_conf_scores[k] = reduce(lambda x, y: x + y, l) / len(l)
+	avg_incorr_conf_scores = dict()
+	for k,l in incorrect_confs.iteritems():
+		avg_incorr_conf_scores[k] = reduce(lambda x, y: x + y, l) / len(l)
+	#average accuracy scores
+
+	avg_acc_scores = avg_lol(top5_classes)
+
+	misclass_dict =defaultdict(int)	
+	all_classes = avg_acc_scores.keys()
+	for k in all_classes:
+		print k, ":",len(top5_classes[k])
+		print "\tAvg. Accuracy:" + str(avg_acc_scores[k] * 100) + "%"
+
+		if k in avg_corr_conf_scores:
+			print "\tAvg. Conf (when correct):" +  str(avg_corr_conf_scores[k] * 100) + "%"
 		else:
-			print "Average confidence for " + str(k) +" is ",  colored(str(v), 'green')
+			print "\tAvg. Conf (when correct): N/A"
+		if k in avg_incorr_conf_scores and avg_incorr_conf_scores[k] * 100 < 99:
+			print "\tAvg. Conf (when incorrect):" +  str(avg_incorr_conf_scores[k] * 100) + "%"
+		else:
+			print "\tAvg. Conf (when incorrect): N/A"
 
-	if dumpresultfile != None:
-	    with io.open(dumpresultfile, 'w', encoding='utf-8') as f:
-		f.write(unicode(
-		    json.dumps(response_with_truth, ensure_ascii=False, sort_keys=True, indent=4, separators=(',', ': '))))
-	    with io.open(dumpresultfile + '.csv', 'w', encoding='utf-8') as f:
-		f.write("\"%s\",%s,%s,%s\n" % (u'TEXT', u'TOP_CLASS_MATCH', u'TOP5_CLASSES_MATCH', u'TOP_CLASS_NAME'))
-		for entry in response_with_truth:
-		    f.write("\"%s\",%s,%s,%s\n" % (
-		        entry['text'], entry['top_class_match'], entry['top5_classes_match'], entry['top_class']))
+		
+		top_confusions = count_lol(top5_classes[k])[0:5]
+		print "\tClassification errors:"
+		for (tc,v) in  top_confusions:
+			misclass_dict[k] += v
+			if k != tc:
+				print "\t\t", tc, v, "times"
+		print "\n"
+	print colored("******Incorrect Classification Percents*********\n", 'blue')
+	sorted_mcs= sorted(misclass_dict.items(), key=operator.itemgetter(1), reverse=True)
+	misclass_total = sum([pair[1] for pair in sorted_mcs])
+	for (misclass,count) in  sorted_mcs:
+		print str(misclass) + ":",str(float(count) / float(misclass_total) *100)+ "%"
+		#print "Average confidence for " + str(k) +" is ",  avg_conf_scores[k]
+	#for k,v in sorted(avg_conf_scores.items(), key=operator.itemgetter(1)):
+		#print "Average confidence for " + str(k) +" is ",  colored(str(v), 'red')
 
+		#if v < .9:
+		#	print "Average confidence for " + str(k) +" is ",  colored(str(v), 'red')
+		#else:
+		#	print "Average confidence for " + str(k) +" is ",  colored(str(v), 'green')
+
+	
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	parser.add_argument("testfile", help="A file containing the test set in classifier json format")
 	parser.add_argument("classifier_id", help="The id of the classifier that is to be tested")
 	parser.add_argument("bm_username", help="The bluemix username")
 	parser.add_argument("bm_password", help="The bluemix password")
-	parser.add_argument("resultsfile", help="produces a json dump of the test results to the file specified, this 'dump' is used by other utilities")
 	args = parser.parse_args()
 
-	test(args.testfile, args.classifier_id, args.bm_username, args.bm_password, args.resultsfile)
+	test(args.testfile, args.classifier_id, args.bm_username, args.bm_password)
 
