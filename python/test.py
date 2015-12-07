@@ -20,7 +20,7 @@ def avg_lol(list_of_lists):
 			for classification in classifications:
 				if classification[0] == class_name:
 					correct_guesses += 1
-			avg_scores[class_name] = float(correct_guesses) / float(total_guesses) 	
+			avg_scores[class_name] = float(correct_guesses) / float(total_guesses)
 		return avg_scores
 
 
@@ -35,17 +35,17 @@ def count_lol(list_of_lists):
 
 
 
-def test(inputfile, classifierid, username, password):
+def test(inputfile, classifierid, username, password, num_top_classes):
 	response_with_truth = []
 	f = open(inputfile, 'r+')
 	test_data = csv.reader(f, delimiter=',')
 	total = 0
 	correct = 0
-	top_5 = 0
+	in_top_x_classes = 0
 	correct_confs = defaultdict(list)
 	incorrect_confs = defaultdict(list)
 
-	top5_classes = defaultdict(list)
+	top_x_classes = defaultdict(list)
 
 	classifier_url = "https://gateway.watsonplatform.net/natural-language-classifier/api/v1/classifiers/" + classifierid + "/classify"
 	base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
@@ -58,20 +58,20 @@ def test(inputfile, classifierid, username, password):
 		question = entry[0]
 		correct_class = entry[1]
 		data = json.dumps({'text': question})
-		
+
 		#submit to NLC and get response back
 		request = urllib2.Request(classifier_url, data=data, headers=headers)
 		response = urllib2.urlopen(request)
-	 
+
 		json_response = json.loads(response.read())
 
-		
+
 		tc_name = json_response["classes"][0]["class_name"]
 		tc_conf = json_response["classes"][0]["confidence"]
 		if tc_name == correct_class:
 			correct +=1
 			correct_confs[correct_class] += [tc_conf]
-		else:		
+		else:
 			incorrect_confs[correct_class] += [tc_conf]
 
 		#avg_conf[tc_name].append(tc_conf)
@@ -79,38 +79,37 @@ def test(inputfile, classifierid, username, password):
 
 
 
-		top5_class = []
-		top5_conf = []
-		for top_classes in json_response['classes'][0:5]:
+		top_x_class = []
+		for top_classes in json_response['classes'][0:num_top_classes]:
 			if top_classes['class_name'] == correct_class:
-				top_5 +=1
+				in_top_x_classes +=1
 		for top_classes in json_response['classes'][0:1]:
-	
-			top5_class.append(top_classes['class_name'])
 
-		top5_classes[correct_class].append(top5_class)
-		    #if top_classes['class_name'] in entry[1]:
-			#top_5 = top_5 + 1
-			#top5Match = True
-			#break
+			top_x_class.append(top_classes['class_name'])
 
+		top_x_classes[correct_class].append(top_x_class)
 
 
 	#	avg_conf_scores = {reduce(lambda x, y: x + y, l) / len(l) for k,l in avg_conf.iteritems()}
 	print colored("******Overall Classifier Statistics*********", 'blue')
+
 	percent_correct = correct * 100 / total
 	if percent_correct > 90:
-		print "correct: " + str(correct) + " (percentage: " + colored(str(percent_correct) + "%)", 'green')
+		color = 'green'
 	else:
-		print "correct: " + str(correct) + " (percentage: " + colored(str(percent_correct) + "%)", 'red')
+		color = 'red'
+	print colored('correct: %d (%d%%)' % (correct, percent_correct), color)
 
-	percent_correct = top_5 * 100 / total
+	percent_correct = in_top_x_classes * 100 / total
 	if percent_correct > 90:
-		print "num of times in top 5: " + str(top_5) + " (percentage: " + colored(str(percent_correct) + "%)", 'green')
+		color = 'green'
 	else:
-		print "num of times in top 5: " + str(top_5) + " (percentage: " + colored(str(percent_correct) + "%)", 'red')
+		color = 'red'
+	print colored('num of times in top %d: %d (%d%%)' % (
+		num_top_classes, in_top_x_classes, percent_correct), color
+	)
 
-	print "total: " + colored(str(total), 'green')
+	print colored("total: %d" % total, 'green')
 	print colored("******Breakdown by class*********", 'blue')
 
 
@@ -123,12 +122,12 @@ def test(inputfile, classifierid, username, password):
 		avg_incorr_conf_scores[k] = reduce(lambda x, y: x + y, l) / len(l)
 	#average accuracy scores
 
-	avg_acc_scores = avg_lol(top5_classes)
+	avg_acc_scores = avg_lol(top_x_classes)
 
-	misclass_dict =defaultdict(int)	
+	misclass_dict =defaultdict(int)
 	all_classes = avg_acc_scores.keys()
 	for k in all_classes:
-		print k, ":",len(top5_classes[k])
+		print k, ":",len(top_x_classes[k])
 		print "\tAvg. Accuracy:" + str(avg_acc_scores[k] * 100) + "%"
 
 		if k in avg_corr_conf_scores:
@@ -140,8 +139,8 @@ def test(inputfile, classifierid, username, password):
 		else:
 			print "\tAvg. Conf (when incorrect): N/A"
 
-		
-		top_confusions = count_lol(top5_classes[k])[0:5]
+
+		top_confusions = count_lol(top_x_classes[k])[0:num_top_classes]
 		print "\tClassification errors:"
 		for (tc,v) in  top_confusions:
 			misclass_dict[k] += v
@@ -162,14 +161,14 @@ def test(inputfile, classifierid, username, password):
 		#else:
 		#	print "Average confidence for " + str(k) +" is ",  colored(str(v), 'green')
 
-	
+
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	parser.add_argument("testfile", help="A file containing the test set in classifier json format")
 	parser.add_argument("classifier_id", help="The id of the classifier that is to be tested")
 	parser.add_argument("bm_username", help="The bluemix username")
 	parser.add_argument("bm_password", help="The bluemix password")
+	parser.add_argument("num_top_classes", type=int, help="The number of top classes to test for")
 	args = parser.parse_args()
 
-	test(args.testfile, args.classifier_id, args.bm_username, args.bm_password)
-
+	test(args.testfile, args.classifier_id, args.bm_username, args.bm_password, args.num_top_classes)
