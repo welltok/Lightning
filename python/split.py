@@ -49,7 +49,7 @@ def main(argv):
             print num_instances, " training instances"
 	    print len(all_classes), " classes"
             print len(train_classes), " classes in the training set"
-            print len(test_classes), " classes in the training set"
+            print len(test_classes), " classes in the testing set"
             train_count = 0
             for item in train_classes:
                 if not item in test_classes:
